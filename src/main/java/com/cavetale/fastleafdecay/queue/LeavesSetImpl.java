@@ -5,7 +5,7 @@ import org.bukkit.Location;
 import java.util.HashSet;
 import java.util.Set;
 
-public class LeavesSetImpl implements LeavesSet {
+class LeavesSetImpl implements LeavesSet {
 
     private final Set<Location> leavesSet = new HashSet<>();
 
