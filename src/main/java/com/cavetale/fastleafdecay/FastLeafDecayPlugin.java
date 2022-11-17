@@ -21,8 +21,8 @@ import org.bukkit.event.block.LeavesDecayEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class FastLeafDecayPlugin extends JavaPlugin implements Listener {
-    private final Set<String> onlyInWorlds = new HashSet<>();
-    private final Set<String> excludeWorlds = new HashSet<>();
+    private Set<String> onlyInWorlds = Collections.emptySet();
+    private Set<String> excludeWorlds = Collections.emptySet();
     private long breakDelay;
     private long decayDelay;
     private boolean spawnParticles;
@@ -37,15 +37,29 @@ public final class FastLeafDecayPlugin extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         // Load config
-        reloadConfig();
         saveDefaultConfig();
-        onlyInWorlds.addAll(getConfig().getStringList("OnlyInWorlds"));
-        excludeWorlds.addAll(getConfig().getStringList("ExcludeWorlds"));
-        breakDelay = getConfig().getLong("BreakDelay");
-        decayDelay = getConfig().getLong("DecayDelay");
-        oneByOne = getConfig().getBoolean("OneByOne");
-        spawnParticles = getConfig().getBoolean("SpawnParticles");
-        playSound = getConfig().getBoolean("PlaySound");
+        reloadConfig();
+
+        var config = getConfig();
+
+        var onlyInWorldsList = config.getStringList("OnlyInWorlds");
+
+        if (!onlyInWorldsList.isEmpty()) {
+            onlyInWorlds = Set.copyOf(onlyInWorldsList);
+        }
+
+        var excludeWorldsList = config.getStringList("ExcludeWorlds");
+
+        if (!excludeWorldsList.isEmpty()) {
+            excludeWorlds = Set.copyOf(excludeWorldsList);
+        }
+
+        breakDelay = Math.max(config.getLong("BreakDelay"), 1);
+        decayDelay = Math.max(config.getLong("DecayDelay"), 1);
+        oneByOne = config.getBoolean("OneByOne");
+        spawnParticles = config.getBoolean("SpawnParticles");
+        playSound = config.getBoolean("PlaySound");
+
         // Register events
         getServer().getPluginManager().registerEvents(this, this);
     }
