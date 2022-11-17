@@ -1,11 +1,7 @@
 package com.cavetale.fastleafdecay;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import com.cavetale.fastleafdecay.queue.LeavesSet;
+import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
@@ -20,7 +16,13 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.LeavesDecayEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Collections;
+import java.util.Set;
+
 public final class FastLeafDecayPlugin extends JavaPlugin implements Listener {
+
+    private static final BlockFace[] NEIGHBORS = {BlockFace.UP, BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST, BlockFace.DOWN};
+
     private Set<String> onlyInWorlds = Collections.emptySet();
     private Set<String> excludeWorlds = Collections.emptySet();
     private long breakDelay;
@@ -28,11 +30,8 @@ public final class FastLeafDecayPlugin extends JavaPlugin implements Listener {
     private boolean spawnParticles;
     private boolean playSound;
     private boolean oneByOne;
-    private final List<Block> scheduledBlocks = new ArrayList<>();
-    private static final List<BlockFace> NEIGHBORS = Arrays
-        .asList(BlockFace.UP,
-                BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST,
-                BlockFace.DOWN);
+
+    private LeavesSet leavesSet;
 
     @Override
     public void onEnable() {
@@ -60,6 +59,8 @@ public final class FastLeafDecayPlugin extends JavaPlugin implements Listener {
         spawnParticles = config.getBoolean("SpawnParticles");
         playSound = config.getBoolean("PlaySound");
 
+        leavesSet = oneByOne ? LeavesSet.createQueuingSet() : LeavesSet.createSet();
+
         // Register events
         getServer().getPluginManager().registerEvents(this, this);
     }
@@ -67,7 +68,7 @@ public final class FastLeafDecayPlugin extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         // Clean up
-        scheduledBlocks.clear();
+        leavesSet.clear();
     }
 
     /**
@@ -95,76 +96,102 @@ public final class FastLeafDecayPlugin extends JavaPlugin implements Listener {
      * Check if block is either leaves or a log and whether any of the
      * blocks surrounding it are non-persistent leaves blocks.  If so,
      * schedule their respective removal via
-     * {@link #decay(Block) block()}.  The latter will perform all
+     * {@link #decay(Location) block()}.  The latter will perform all
      * necessary checks, including distance.
      *
      * @param oldBlock the block
-     * @param delay the delay of the scheduled check, in ticks
+     * @param delay    the delay of the scheduled check, in ticks
      */
     private void onBlockRemove(final Block oldBlock, long delay) {
-        if (!Tag.LOGS.isTagged(oldBlock.getType())
-            && !Tag.LEAVES.isTagged(oldBlock.getType())) {
+        if (!Tag.LOGS.isTagged(oldBlock.getType()) && !Tag.LEAVES.isTagged(oldBlock.getType())) {
             return;
         }
-        final String worldName = oldBlock.getWorld().getName();
-        if (!onlyInWorlds.isEmpty() && !onlyInWorlds.contains(worldName)) return;
-        if (excludeWorlds.contains(worldName)) return;
-        // No return
-        Collections.shuffle(NEIGHBORS);
-        for (BlockFace neighborFace: NEIGHBORS) {
-            final Block block = oldBlock.getRelative(neighborFace);
-            if (!Tag.LEAVES.isTagged(block.getType())) continue;
-            Leaves leaves = (Leaves) block.getBlockData();
-            if (leaves.isPersistent()) continue;
-            if (scheduledBlocks.contains(block)) continue;
+
+        var worldName = oldBlock.getWorld().getName();
+
+        if (!onlyInWorlds.isEmpty() && !onlyInWorlds.contains(worldName)) {
+            return;
+        }
+
+        if (excludeWorlds.contains(worldName)) {
+            return;
+        }
+
+        for (var neighborFace : NEIGHBORS) {
+            var block = oldBlock.getRelative(neighborFace);
+
+            if (!Tag.LEAVES.isTagged(block.getType())) {
+                continue;
+            }
+
+            var leaves = (Leaves) block.getBlockData();
+            var location = block.getLocation();
+
+            if (leaves.isPersistent() || leavesSet.contains(location)) {
+                continue;
+            }
+
+            boolean notScheduled = leavesSet.isEmpty();
+            leavesSet.add(location);
+
             if (oneByOne) {
-                if (scheduledBlocks.isEmpty()) {
+                if (notScheduled) {
                     getServer().getScheduler().runTaskLater(this, this::decayOne, delay);
                 }
-                scheduledBlocks.add(block);
             } else {
-                getServer().getScheduler().runTaskLater(this, () -> decay(block), delay);
+                getServer().getScheduler().runTaskLater(this, () -> decay(location), delay);
             }
-            scheduledBlocks.add(block);
         }
     }
 
     /**
      * Decay if it is a leaves block and its distance the nearest log
      * block is 7 or greater.
-     *
+     * <p>
      * This method may only be called by a scheduler if the given
      * block has previously been added to the scheduledBlocks set,
      * from which it will be removed.
-     *
+     * <p>
      * This method calls {@link LeavesDecayEvent} and will not act if
      * the event is cancelled.
-     * @param block The block
      *
+     * @param location The block location
      * @return true if the block was decayed, false otherwise.
      */
-    private boolean decay(Block block) {
-        if (!scheduledBlocks.remove(block)) return false;
-        if (!block.getWorld().isChunkLoaded(block.getX() >> 4, block.getZ() >> 4)) return false;
-        if (!Tag.LEAVES.isTagged(block.getType())) return false;
-        Leaves leaves = (Leaves) block.getBlockData();
-        if (leaves.isPersistent()) return false;
-        if (leaves.getDistance() < 7) return false;
-        LeavesDecayEvent event = new LeavesDecayEvent(block);
+    private boolean decay(Location location) {
+        leavesSet.remove(location);
+
+        if (!isLoaded(location)) {
+            return false;
+        }
+
+        var block = location.getBlock();
+
+        if (!Tag.LEAVES.isTagged(block.getType())) { // Is there still leaves?
+            return false;
+        }
+
+        var leaves = (Leaves) block.getBlockData();
+
+        if (leaves.isPersistent() || leaves.getDistance() < 7) {
+            return false;
+        }
+
+        var event = new LeavesDecayEvent(block);
         getServer().getPluginManager().callEvent(event);
-        if (event.isCancelled()) return false;
+
+        if (event.isCancelled()) {
+            return false;
+        }
+
         if (spawnParticles) {
-            block.getWorld()
-                .spawnParticle(Particle.BLOCK_DUST,
-                               block.getLocation().add(0.5, 0.5, 0.5),
-                               8, 0.2, 0.2, 0.2, 0,
-                               block.getType().createBlockData());
+            block.getWorld().spawnParticle(Particle.BLOCK_DUST, location.add(0.5, 0.5, 0.5), 8, 0.2, 0.2, 0.2, 0, leaves);
         }
+
         if (playSound) {
-            block.getWorld().playSound(block.getLocation(),
-                                       Sound.BLOCK_GRASS_BREAK,
-                                       SoundCategory.BLOCKS, 0.05f, 1.2f);
+            block.getWorld().playSound(location, Sound.BLOCK_GRASS_BREAK, SoundCategory.BLOCKS, 0.05f, 1.2f);
         }
+
         block.breakNaturally();
         return true;
     }
@@ -174,21 +201,30 @@ public final class FastLeafDecayPlugin extends JavaPlugin implements Listener {
      * same function again if the list is not empty.
      * This gets called if OneByOne is activated in the
      * config. Therefore, we wait at least one tick.
-     *
+     * <p>
      * This could undermine the BlockDelay if the DecayDelay
      * significantly smaller and the list devoid of valid leaf blocks.
      */
     private void decayOne() {
         boolean decayed = false;
-        do {
-            if (scheduledBlocks.isEmpty()) return;
-            Block block = scheduledBlocks.get(0);
-            decayed = decay(block); // Will remove block from list.
-        } while (!decayed);
-        if (!scheduledBlocks.isEmpty()) {
-            long delay = decayDelay;
-            if (delay <= 0) delay = 1L;
-            getServer().getScheduler().runTaskLater(this, this::decayOne, delay);
+
+        while (!decayed && !leavesSet.isEmpty()) {
+            var blockLocation = leavesSet.getFirst();
+
+            if (blockLocation == null) {
+                break;
+            }
+
+            decayed = decay(blockLocation);
         }
+
+        if (!leavesSet.isEmpty()) {
+            getServer().getScheduler().runTaskLater(this, this::decayOne, Math.max(decayDelay, 1));
+        }
+    }
+
+    private boolean isLoaded(Location location) {
+        var world = location.getWorld();
+        return world != null && world.isChunkLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4);
     }
 }
