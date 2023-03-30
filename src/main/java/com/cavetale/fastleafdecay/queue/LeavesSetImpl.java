@@ -1,32 +1,25 @@
 package com.cavetale.fastleafdecay.queue;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
+import it.unimi.dsi.fastutil.longs.LongSets;
 import org.bukkit.Location;
-
-import java.util.HashSet;
-import java.util.Set;
 
 class LeavesSetImpl implements LeavesSet {
 
-    private final Set<Location> leavesSet = new HashSet<>();
+    private final LongSet leavesSet = LongSets.synchronize(new LongOpenHashSet());
 
-    @Override
-    public void add(Location location) {
-        leavesSet.add(location);
+    LeavesSetImpl() {
     }
 
     @Override
-    public void remove(Location location) {
-        leavesSet.remove(location);
+    public boolean add(Location pos) {
+        return leavesSet.add(getBlockKey(pos));
     }
 
     @Override
-    public Location getFirst() {
-        return null; // unsupported
-    }
-
-    @Override
-    public boolean contains(Location location) {
-        return leavesSet.contains(location);
+    public boolean remove(Location pos) {
+        return leavesSet.remove(getBlockKey(pos));
     }
 
     @Override
@@ -37,5 +30,9 @@ class LeavesSetImpl implements LeavesSet {
     @Override
     public void clear() {
         leavesSet.clear();
+    }
+
+    private static long getBlockKey(final Location pos) {
+        return ((long) pos.x() & 0x7FFFFFF) | (((long) pos.z() & 0x7FFFFFF) << 27) | ((long) pos.y() << 54);
     }
 }

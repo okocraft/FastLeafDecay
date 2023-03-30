@@ -8,17 +8,9 @@ public interface LeavesSet {
         return new LeavesSetImpl();
     }
 
-    static LeavesSet createQueuingSet() {
-        return new LeavesQueuingSet();
-    }
+    boolean add(Location pos);
 
-    void add(Location location);
-
-    void remove(Location location);
-
-    Location getFirst();
-
-    boolean contains(Location location);
+    boolean remove(Location pos);
 
     boolean isEmpty();
 
