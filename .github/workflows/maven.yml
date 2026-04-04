@@ -5,5 +5,5 @@ jobs:
   build-java-11:
     uses: okocraft/workflows/.github/workflows/maven.yml@v1
     with:
-      java-version: '11'
+      java-version: '17'
       package-name: FastLeafDecay-Build-${{ github.run_number }}
