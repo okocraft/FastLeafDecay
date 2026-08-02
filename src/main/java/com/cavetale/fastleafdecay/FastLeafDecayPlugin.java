@@ -210,7 +210,7 @@ public final class FastLeafDecayPlugin extends JavaPlugin implements Listener {
         }
 
         if (spawnParticles) {
-            block.getWorld().spawnParticle(Particle.BLOCK_DUST, location.add(0.5, 0.5, 0.5), 8, 0.2, 0.2, 0.2, 0, leaves);
+            block.getWorld().spawnParticle(Particle.BLOCK, location.add(0.5, 0.5, 0.5), 8, 0.2, 0.2, 0.2, 0, leaves);
         }
 
         if (playSound) {
