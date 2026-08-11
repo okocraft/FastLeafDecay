@@ -80,6 +80,7 @@
     </dependencies>
 
     <build>
+        <finalName>${project.name}-${project.version}</finalName>
         <resources>
             <resource>
                 <targetPath>.</targetPath>
@@ -124,7 +125,6 @@
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.5.1</version>
                 <configuration>
-                    <finalName>${project.name}-${project.version}</finalName>
                     <archive>
                         <manifest>
                             <addDefaultEntries>false</addDefaultEntries>
