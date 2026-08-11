@@ -43,7 +43,8 @@ PlaySound: true
 
 ## Links
 - [Source code](https://github.com/okocraft/FastLeafDecay) on GitHub
-- [BukkitDev plugin page](https://dev.bukkit.org/projects/fastleafdecay)
-- [SpigotMC resource page](https://www.spigotmc.org/resources/fastleafdecay.60237/)
 - [1.12 compatibility version](https://github.com/StarTux/FastLeafDecay/releases/tag/1.12-compat-1.0)
 - [1.8 compatibility version](https://github.com/StarTux/FastLeafDecay/releases/tag/1.8-compat-1.0)
+
+## Original project
+This repository is based on the original [StarTux/FastLeafDecay](https://github.com/StarTux/FastLeafDecay) project.
