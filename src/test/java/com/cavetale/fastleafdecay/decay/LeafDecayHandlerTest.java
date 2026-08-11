@@ -360,6 +360,24 @@ class LeafDecayHandlerTest {
         }
 
         @Test
+        void releasesThePendingPositionEvenWhenTheWorldIsDisabled() {
+            givenRegionScheduler();
+            var block = removedBlockSurroundedByLeaves(world, LOG);
+
+            Removal.BLOCK_BREAK.dispatch(handler, block);
+            var task = scheduledTaskOf(0);
+            excludeTheWorld();
+            task.accept(null);
+
+            configHolder.set(FastLeafDecayConfig.defaults());
+            Removal.BLOCK_BREAK.dispatch(handler, block);
+
+            var locations = allScheduledLocations();
+            assertEquals(NEIGHBOR_FACES.length + 1, locations.size());
+            assertEquals(2, locations.stream().filter(neighborLocation(world, 0)::equals).count());
+        }
+
+        @Test
         void doesNothingAfterTheWorldWasUnloaded() {
             givenRegionScheduler();
 
