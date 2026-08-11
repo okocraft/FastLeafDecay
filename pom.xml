@@ -9,7 +9,7 @@
 
     <name>FastLeafDecay</name>
     <packaging>jar</packaging>
-    <url>https://www.github.com/StarTux/FastLeafDecay</url>
+    <url>https://github.com/okocraft/FastLeafDecay</url>
 
     <properties>
         <project.charset>UTF-8</project.charset>
