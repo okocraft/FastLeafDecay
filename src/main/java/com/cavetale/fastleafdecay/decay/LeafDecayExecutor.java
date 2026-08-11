@@ -1,7 +1,7 @@
 package com.cavetale.fastleafdecay.decay;
 
 import com.cavetale.fastleafdecay.config.FastLeafDecayConfigHolder;
-import net.kyori.adventure.key.Key;
+import io.papermc.paper.registry.keys.SoundEventKeys;
 import net.kyori.adventure.sound.Sound;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -27,7 +27,7 @@ public final class LeafDecayExecutor {
      */
     public static final int MIN_DECAY_DISTANCE = 7;
 
-    private static final Sound DECAY_SOUND = Sound.sound(Key.key("block.grass.break"), Sound.Source.BLOCK, 0.05f, 1.2f);
+    private static final Sound DECAY_SOUND = Sound.sound(SoundEventKeys.BLOCK_GRASS_BREAK.key(), Sound.Source.BLOCK, 0.05f, 1.2f);
 
     private final PluginManager pluginManager;
     private final FastLeafDecayConfigHolder configHolder;
