@@ -84,6 +84,12 @@ class FastLeafDecayConfigLoaderTest {
                         """,
                     new FastLeafDecayConfig(filter("minecraft:overworld", "custom:resource_world"), WorldFilter.empty(),
                         FastLeafDecayConfig.DEFAULT_BREAK_DELAY, FastLeafDecayConfig.DEFAULT_DECAY_DELAY, true, true)),
+                Arguments.of("delays at their minimum", """
+                        BreakDelay: 5
+                        DecayDelay: 1
+                        """,
+                    new FastLeafDecayConfig(WorldFilter.empty(), WorldFilter.empty(),
+                        FastLeafDecayConfig.MIN_BREAK_DELAY, FastLeafDecayConfig.MIN_DECAY_DELAY, true, true)),
                 Arguments.of("scalars written as strings", """
                         BreakDelay: '10'
                         SpawnParticles: 'false'
@@ -155,16 +161,21 @@ class FastLeafDecayConfigLoaderTest {
         }
 
         @Test
-        void invalidWorldKeyIsIgnoredWithWarning() {
+        void invalidWorldEntriesAreIgnoredWithWarning() {
             var result = load("""
                 OnlyInWorlds:
                   - world
+                  - minecraft:the_nether
                   - Invalid:Key
+                  - custom:re source
+                ExcludeWorlds:
+                  - other
                 """);
 
-            assertEquals(filter("world"), result.config().onlyInWorlds());
-            assertEquals(1, result.warnings().size());
-            assertTrue(result.warnings().getFirst().contains("OnlyInWorlds"));
+            assertEquals(filter("world", "minecraft:the_nether"), result.config().onlyInWorlds());
+            assertEquals(filter("other"), result.config().excludeWorlds());
+            assertEquals(2, result.warnings().size());
+            assertTrue(result.warnings().stream().allMatch(warning -> warning.contains("OnlyInWorlds")));
         }
 
         private ConfigLoadResult load(String yaml) {

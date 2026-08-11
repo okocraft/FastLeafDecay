@@ -80,9 +80,12 @@ class FastLeafDecayConfigTest {
             "                     | world               | world | minecraft:overworld | false",
             "                     | minecraft:overworld | world | minecraft:overworld | false",
             "                     | other               | world | minecraft:overworld | true",
-            // ExcludeWorlds takes precedence over OnlyInWorlds
+            // ExcludeWorlds takes precedence over OnlyInWorlds, even if both refer to the same
+            // world through a different representation
             "world                | world               | world | minecraft:overworld | false",
             "world                | minecraft:overworld | world | minecraft:overworld | false",
+            "minecraft:overworld  | world               | world | minecraft:overworld | false",
+            "minecraft:overworld  | minecraft:overworld | world | minecraft:overworld | false",
         })
         void reflectsBothWorldFilters(String onlyInWorlds, String excludeWorlds, String worldName, String worldKey, boolean expected) {
             var config = new FastLeafDecayConfig(filter(onlyInWorlds), filter(excludeWorlds),

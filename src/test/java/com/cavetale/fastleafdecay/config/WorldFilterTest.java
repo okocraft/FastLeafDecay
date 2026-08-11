@@ -46,6 +46,7 @@ class WorldFilterTest {
             "custom:re source             | custom:re source",
             "custom:resource:world        | custom:resource:world",
             "world,Invalid:Key            | Invalid:Key",
+            "world,minecraft:the_nether,Invalid:Key,custom:re source | Invalid:Key,custom:re source",
         })
         void reportsOnlyTheInvalidEntries(String entries, String invalidEntries) {
             var result = WorldFilter.parse(entries(entries));
