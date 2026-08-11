@@ -1,3 +1,4 @@
+# Worlds can be listed by their name (e.g. world) or by their key (e.g. minecraft:the_nether).
 # Leave this string list empty to enable all worlds.
 OnlyInWorlds: []
 # List worlds you wish to exclude from sped up leaves decay.
