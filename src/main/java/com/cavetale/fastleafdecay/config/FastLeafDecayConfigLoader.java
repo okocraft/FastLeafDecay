@@ -34,7 +34,16 @@ public final class FastLeafDecayConfigLoader {
      * @throws ConfigurateException if the file cannot be read or is not valid YAML
      */
     public static @NotNull ConfigLoadResult load(@NotNull Path filepath) throws ConfigurateException {
-        var root = YamlConfigurationLoader.builder().path(filepath).build().load();
+        return load(YamlConfigurationLoader.builder().path(filepath).build().load());
+    }
+
+    /**
+     * Creates the configuration from the given node.
+     *
+     * @param root the node holding the configuration options
+     * @return the created configuration and the warnings the caller should report
+     */
+    public static @NotNull ConfigLoadResult load(@NotNull ConfigurationNode root) {
         var warnings = new ArrayList<String>();
 
         var config = new FastLeafDecayConfig(
