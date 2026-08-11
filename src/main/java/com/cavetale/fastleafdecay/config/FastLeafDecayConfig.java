@@ -8,15 +8,9 @@ import java.util.Objects;
 /**
  * The immutable runtime configuration of the plugin.
  * <p>
- * The delays are clamped to their minimum on construction, so an instance
- * always holds values that are safe to use.
- *
- * @param onlyInWorlds   the worlds to limit the fast leaf decay to, or an empty filter for all worlds
- * @param excludeWorlds  the worlds to exclude from the fast leaf decay
- * @param breakDelay     the delay in ticks to check around a broken block
- * @param decayDelay     the delay in ticks to check around decaying leaves
- * @param spawnParticles whether to spawn particles on decay
- * @param playSound      whether to play a sound on decay
+ * The delays are in ticks and are clamped to their minimum on construction, so an
+ * instance always holds values that are safe to use. An empty {@code onlyInWorlds}
+ * means every world.
  */
 public record FastLeafDecayConfig(@NotNull WorldFilter onlyInWorlds, @NotNull WorldFilter excludeWorlds,
                                   long breakDelay, long decayDelay,
@@ -41,11 +35,6 @@ public record FastLeafDecayConfig(@NotNull WorldFilter onlyInWorlds, @NotNull Wo
         new FastLeafDecayConfig(WorldFilter.empty(), WorldFilter.empty(),
             DEFAULT_BREAK_DELAY, DEFAULT_DECAY_DELAY, DEFAULT_SPAWN_PARTICLES, DEFAULT_PLAY_SOUND);
 
-    /**
-     * Returns the configuration that consists of the default values only.
-     *
-     * @return the default configuration
-     */
     public static @NotNull FastLeafDecayConfig defaults() {
         return DEFAULT;
     }
@@ -57,12 +46,6 @@ public record FastLeafDecayConfig(@NotNull WorldFilter onlyInWorlds, @NotNull Wo
         decayDelay = Math.max(decayDelay, MIN_DECAY_DELAY);
     }
 
-    /**
-     * Checks if the fast leaf decay is enabled in the given world.
-     *
-     * @param world the world to check
-     * @return {@code true} if the world is enabled, otherwise {@code false}
-     */
     public boolean isEnabledIn(@NotNull World world) {
         if (!this.onlyInWorlds.isEmpty() && !this.onlyInWorlds.matches(world)) {
             return false;

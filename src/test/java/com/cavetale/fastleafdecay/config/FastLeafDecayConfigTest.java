@@ -39,9 +39,6 @@ class FastLeafDecayConfigTest {
         assertTrue(config.playSound());
     }
 
-    /**
-     * Tests of the invariants enforced on construction.
-     */
     @Nested
     class Delays {
 
@@ -61,9 +58,6 @@ class FastLeafDecayConfigTest {
         }
     }
 
-    /**
-     * Tests of {@link FastLeafDecayConfig#isEnabledIn(World)}.
-     */
     @Nested
     class IsEnabledIn {
 

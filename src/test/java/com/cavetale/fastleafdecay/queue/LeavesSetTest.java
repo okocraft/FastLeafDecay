@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(MockitoExtension.class)
-class LeavesSetImplTest {
+class LeavesSetTest {
 
     @Mock
     private World world;
@@ -23,7 +23,7 @@ class LeavesSetImplTest {
 
     @BeforeEach
     void setUp() {
-        leavesSet = LeavesSet.createSet();
+        leavesSet = new LeavesSet();
     }
 
     @Test

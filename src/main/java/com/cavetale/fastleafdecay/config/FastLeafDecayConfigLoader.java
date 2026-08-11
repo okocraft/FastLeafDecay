@@ -14,8 +14,8 @@ import java.util.List;
 /**
  * A loader that reads {@code config.yml} and creates a {@link FastLeafDecayConfig}.
  * <p>
- * A value that cannot be read or parsed is replaced with its default and reported
- * as a warning message, so a malformed option never invalidates the other options.
+ * A value that cannot be read or parsed is replaced with its default and reported as
+ * a warning message, so a malformed option never invalidates the other options.
  */
 public final class FastLeafDecayConfigLoader {
 
@@ -27,22 +27,12 @@ public final class FastLeafDecayConfigLoader {
     private static final String PLAY_SOUND = "PlaySound";
 
     /**
-     * Loads the configuration from the given file.
-     *
-     * @param filepath the path to {@code config.yml}
-     * @return the loaded configuration and the warnings the caller should report
      * @throws ConfigurateException if the file cannot be read or is not valid YAML
      */
     public static @NotNull ConfigLoadResult load(@NotNull Path filepath) throws ConfigurateException {
         return load(YamlConfigurationLoader.builder().path(filepath).build().load());
     }
 
-    /**
-     * Creates the configuration from the given node.
-     *
-     * @param root the node holding the configuration options
-     * @return the created configuration and the warnings the caller should report
-     */
     public static @NotNull ConfigLoadResult load(@NotNull ConfigurationNode root) {
         var warnings = new ArrayList<String>();
 

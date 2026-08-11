@@ -40,9 +40,6 @@ class FastLeafDecayConfigLoaderTest {
         }
     }
 
-    /**
-     * Tests of the conversion from a node to a configuration, without touching the file system.
-     */
     @Nested
     class FromNode {
 
@@ -183,9 +180,6 @@ class FastLeafDecayConfigLoaderTest {
         }
     }
 
-    /**
-     * Tests of reading the configuration from a file.
-     */
     @Nested
     class FromFile {
 

@@ -29,9 +29,6 @@ class WorldFilterTest {
         return world;
     }
 
-    /**
-     * Tests of {@link WorldFilter#parse(java.util.Collection)}.
-     */
     @Nested
     class Parse {
 
@@ -72,9 +69,6 @@ class WorldFilterTest {
         }
     }
 
-    /**
-     * Tests of {@link WorldFilter#matches(World)}.
-     */
     @Nested
     class Matches {
 
