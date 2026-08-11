@@ -17,8 +17,7 @@ FastLeafDecay works automatically on all leaves which are not player placed and 
 - Devs: This plugin calls `LeavesDecayEvent` before taking action and respects its cancellation state.
 
 ## Compatibility
-FastLeafDecay uses Spigot's modern `BlockData` and `Tag` frameworks and will therefore only work on Bukkit or Spigot **1.13** or above.
-Builds compatible with Bukkit **1.12** or **1.8** can be found in the *Links* section below.
+FastLeafDecay supports **Paper** and requires **Java 25**.
 
 ## Installation
 - Drop the `FastLeafDecay.jar` into your `plugins` folder and restart the server or load the plugin manually.
@@ -31,14 +30,11 @@ Many features of FastLeafDecay can be configured in the `config.yml` file. To ap
 OnlyInWorlds: []
 # List worlds you wish to exclude from sped up leaves decay.
 ExcludeWorlds: []
-# Delay in ticks to check around broken blocks.
+# Delay in ticks to check around a broken blocks.
 # Must be at least 5 to guarantee proper function.
 BreakDelay: 5
 # Delay in ticks to check around decaying leaves.
 DecayDelay: 2
-# Break blocks one by one. If set to true, no more than one leaf block
-# will be broken at once.
-OneByOne: false
 # Play additional effects
 SpawnParticles: true
 PlaySound: true
