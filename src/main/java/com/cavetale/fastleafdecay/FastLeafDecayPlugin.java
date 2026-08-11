@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class FastLeafDecayPlugin extends JavaPlugin implements Listener {
 
     private static final BlockFace[] NEIGHBORS = {BlockFace.UP, BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST, BlockFace.DOWN};
+    private static final long MIN_BREAK_DELAY = 5;
     private static final boolean REGION_SCHEDULER;
 
     static {
@@ -60,19 +61,10 @@ public final class FastLeafDecayPlugin extends JavaPlugin implements Listener {
 
         var config = getConfig();
 
-        var onlyInWorldsList = config.getStringList("OnlyInWorlds");
+        onlyInWorlds = Set.copyOf(config.getStringList("OnlyInWorlds"));
+        excludeWorlds = Set.copyOf(config.getStringList("ExcludeWorlds"));
 
-        if (!onlyInWorldsList.isEmpty()) {
-            onlyInWorlds = Set.copyOf(onlyInWorldsList);
-        }
-
-        var excludeWorldsList = config.getStringList("ExcludeWorlds");
-
-        if (!excludeWorldsList.isEmpty()) {
-            excludeWorlds = Set.copyOf(excludeWorldsList);
-        }
-
-        breakDelay = Math.max(config.getLong("BreakDelay"), 1);
+        breakDelay = Math.max(config.getLong("BreakDelay"), MIN_BREAK_DELAY);
         decayDelay = Math.max(config.getLong("DecayDelay"), 1);
         spawnParticles = config.getBoolean("SpawnParticles");
         playSound = config.getBoolean("PlaySound");
@@ -210,7 +202,7 @@ public final class FastLeafDecayPlugin extends JavaPlugin implements Listener {
         }
 
         if (spawnParticles) {
-            block.getWorld().spawnParticle(Particle.BLOCK, location.add(0.5, 0.5, 0.5), 8, 0.2, 0.2, 0.2, 0, leaves);
+            block.getWorld().spawnParticle(Particle.BLOCK, location.clone().add(0.5, 0.5, 0.5), 8, 0.2, 0.2, 0.2, 0, leaves);
         }
 
         if (playSound) {
