@@ -75,10 +75,6 @@ class LeafDecayExecutorTest {
         when(this.world.getBlockAt(this.location)).thenReturn(this.block);
     }
 
-    /**
-     * Makes the block at the tested location leaves that are decayed, so the world of
-     * the block is needed for the effects.
-     */
     private void givenDecayingLeaves(int distance) {
         givenLeaves(false, distance);
         when(this.block.getWorld()).thenReturn(this.world);

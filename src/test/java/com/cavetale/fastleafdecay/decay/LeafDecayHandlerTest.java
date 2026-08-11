@@ -57,9 +57,6 @@ class LeafDecayHandlerTest {
     private static final UUID WORLD_UID = UUID.fromString("00000000-0000-0000-0000-0000000000ff");
     private static final String WORLD_NAME = "world";
 
-    /**
-     * The two events that make the handler look for the leaves around the removed block.
-     */
     private enum Removal {
 
         BLOCK_BREAK(FastLeafDecayConfig.DEFAULT_BREAK_DELAY) {
@@ -84,9 +81,6 @@ class LeafDecayHandlerTest {
         abstract void dispatch(LeafDecayHandler handler, Block block);
     }
 
-    /**
-     * The state of a block next to the removed one.
-     */
     private enum Neighbor {
 
         DECAYABLE_LEAVES,
@@ -140,10 +134,6 @@ class LeafDecayHandlerTest {
             FastLeafDecayConfig.DEFAULT_BREAK_DELAY, FastLeafDecayConfig.DEFAULT_DECAY_DELAY, true, true));
     }
 
-    /**
-     * Creates the removed block without any neighbor, for the cases in which the
-     * handler is expected to stop before looking at them.
-     */
     private Block removedBlock(Material type) {
         var block = mock(Block.class);
         when(block.getType()).thenReturn(type);

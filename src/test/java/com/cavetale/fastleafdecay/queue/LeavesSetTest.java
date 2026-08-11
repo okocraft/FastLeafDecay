@@ -175,10 +175,6 @@ class LeavesSetTest {
             assertTrue(leavesSet.isEmpty());
         }
 
-        /**
-         * Runs the operation on every worker at the same time and returns how many of
-         * them returned {@code true}.
-         */
         private long countTrue(IntPredicate operation) throws Exception {
             var barrier = new CyclicBarrier(WORKERS);
             List<Future<Boolean>> results;
