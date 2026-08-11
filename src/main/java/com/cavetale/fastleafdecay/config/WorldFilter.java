@@ -23,23 +23,13 @@ public final class WorldFilter {
 
     private static final WorldFilter EMPTY = new WorldFilter(Set.of(), Set.of());
 
-    /**
-     * Returns a filter without any entry, which matches no world.
-     *
-     * @return an empty filter
-     */
     public static @NotNull WorldFilter empty() {
         return EMPTY;
     }
 
     /**
-     * Creates a filter from the given configuration entries.
-     * <p>
      * Entries that cannot be parsed are not included in the resulting filter and
      * are reported through {@link ParseResult#invalidEntries()}.
-     *
-     * @param entries the configured world names and namespaced keys
-     * @return the created filter and the entries that could not be parsed
      */
     public static @NotNull ParseResult parse(@NotNull Collection<String> entries) {
         var names = new HashSet<String>();
@@ -71,12 +61,6 @@ public final class WorldFilter {
         return new ParseResult(filter, List.copyOf(invalidEntries));
     }
 
-    /**
-     * The result of {@link #parse(Collection)}.
-     *
-     * @param filter         the created filter
-     * @param invalidEntries the entries that could not be parsed and were dropped
-     */
     public record ParseResult(@NotNull WorldFilter filter, @NotNull List<String> invalidEntries) {
     }
 
@@ -88,21 +72,10 @@ public final class WorldFilter {
         this.keys = keys;
     }
 
-    /**
-     * Checks if this filter has no entry.
-     *
-     * @return {@code true} if this filter has no entry, otherwise {@code false}
-     */
     public boolean isEmpty() {
         return this.names.isEmpty() && this.keys.isEmpty();
     }
 
-    /**
-     * Checks if the given world is contained in this filter.
-     *
-     * @param world the world to check
-     * @return {@code true} if the world matches one of the entries, otherwise {@code false}
-     */
     public boolean matches(@NotNull World world) {
         if (!this.names.isEmpty() && this.names.contains(world.getName())) {
             return true;
