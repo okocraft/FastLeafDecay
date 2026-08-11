@@ -1,5 +1,7 @@
 package com.cavetale.fastleafdecay;
 
+import com.cavetale.fastleafdecay.config.FastLeafDecayConfig;
+import com.cavetale.fastleafdecay.config.FastLeafDecayConfigLoader;
 import com.cavetale.fastleafdecay.queue.LeavesSet;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -18,17 +20,18 @@ import org.bukkit.event.block.LeavesDecayEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
+import org.spongepowered.configurate.ConfigurateException;
 
-import java.util.Collections;
+import java.nio.file.Files;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 
 public final class FastLeafDecayPlugin extends JavaPlugin implements Listener {
 
     private static final BlockFace[] NEIGHBORS = {BlockFace.UP, BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST, BlockFace.DOWN};
-    private static final long MIN_BREAK_DELAY = 5;
+    private static final String CONFIG_FILENAME = "config.yml";
     private static final boolean REGION_SCHEDULER;
 
     static {
@@ -46,28 +49,25 @@ public final class FastLeafDecayPlugin extends JavaPlugin implements Listener {
 
     private final Map<UUID, LeavesSet> leavesSetMap = new ConcurrentHashMap<>();
 
-    private Set<String> onlyInWorlds = Collections.emptySet();
-    private Set<String> excludeWorlds = Collections.emptySet();
-    private long breakDelay;
-    private long decayDelay;
-    private boolean spawnParticles;
-    private boolean playSound;
+    private volatile FastLeafDecayConfig config = FastLeafDecayConfig.defaults();
 
     @Override
     public void onEnable() {
         // Load config
-        saveDefaultConfig();
-        reloadConfig();
+        var configPath = getDataFolder().toPath().resolve(CONFIG_FILENAME);
 
-        var config = getConfig();
+        if (!Files.isRegularFile(configPath)) {
+            saveResource(CONFIG_FILENAME, false);
+        }
 
-        onlyInWorlds = Set.copyOf(config.getStringList("OnlyInWorlds"));
-        excludeWorlds = Set.copyOf(config.getStringList("ExcludeWorlds"));
-
-        breakDelay = Math.max(config.getLong("BreakDelay"), MIN_BREAK_DELAY);
-        decayDelay = Math.max(config.getLong("DecayDelay"), 1);
-        spawnParticles = config.getBoolean("SpawnParticles");
-        playSound = config.getBoolean("PlaySound");
+        try {
+            var result = FastLeafDecayConfigLoader.load(configPath);
+            result.warnings().forEach(getLogger()::warning);
+            config = result.config();
+        } catch (ConfigurateException e) {
+            getLogger().log(Level.WARNING, "Could not load " + CONFIG_FILENAME + ", using the default values.", e);
+            config = FastLeafDecayConfig.defaults();
+        }
 
         // Register events
         getServer().getPluginManager().registerEvents(this, this);
@@ -87,7 +87,7 @@ public final class FastLeafDecayPlugin extends JavaPlugin implements Listener {
      */
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     public void onBlockBreak(BlockBreakEvent event) {
-        onBlockRemove(event.getBlock(), breakDelay);
+        onBlockRemove(event.getBlock(), config.breakDelay());
     }
 
     /**
@@ -97,7 +97,7 @@ public final class FastLeafDecayPlugin extends JavaPlugin implements Listener {
      */
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     public void onLeavesDecay(LeavesDecayEvent event) {
-        onBlockRemove(event.getBlock(), decayDelay);
+        onBlockRemove(event.getBlock(), config.decayDelay());
     }
 
     @EventHandler
@@ -125,13 +125,8 @@ public final class FastLeafDecayPlugin extends JavaPlugin implements Listener {
         }
 
         var world = oldBlock.getWorld();
-        var worldName = world.getName();
 
-        if (!onlyInWorlds.isEmpty() && !onlyInWorlds.contains(worldName)) {
-            return;
-        }
-
-        if (excludeWorlds.contains(worldName)) {
+        if (!config.isEnabledIn(world)) {
             return;
         }
 
@@ -201,11 +196,13 @@ public final class FastLeafDecayPlugin extends JavaPlugin implements Listener {
             return false;
         }
 
-        if (spawnParticles) {
+        var config = this.config;
+
+        if (config.spawnParticles()) {
             block.getWorld().spawnParticle(Particle.BLOCK, location.clone().add(0.5, 0.5, 0.5), 8, 0.2, 0.2, 0.2, 0, leaves);
         }
 
-        if (playSound) {
+        if (config.playSound()) {
             block.getWorld().playSound(location, Sound.BLOCK_GRASS_BREAK, SoundCategory.BLOCKS, 0.05f, 1.2f);
         }
 

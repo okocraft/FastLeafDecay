@@ -26,6 +26,7 @@ FastLeafDecay supports **Paper** and requires **Java 25**.
 ## Configuraton
 Many features of FastLeafDecay can be configured in the `config.yml` file. To apply your changes, either restart your server or reload the plugin manually. To revert to the plugin defaults, delete the file and a new one will be created next time the plugin gets loaded.
 ```
+# Worlds can be listed by their name (e.g. world) or by their key (e.g. minecraft:the_nether).
 # Leave this string list empty to enable all worlds.
 OnlyInWorlds: []
 # List worlds you wish to exclude from sped up leaves decay.
