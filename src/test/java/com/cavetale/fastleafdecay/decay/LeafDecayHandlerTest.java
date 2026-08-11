@@ -34,11 +34,13 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -54,31 +56,38 @@ class LeafDecayHandlerTest {
     private static final BlockFace[] NEIGHBOR_FACES =
         {BlockFace.UP, BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST, BlockFace.DOWN};
 
-    private static final UUID WORLD_UID = UUID.fromString("00000000-0000-0000-0000-0000000000ff");
+    private static final UUID WORLD_UID = UUID.fromString("00000000-0000-0000-0000-0000000000a1");
+    private static final UUID OTHER_WORLD_UID = UUID.fromString("00000000-0000-0000-0000-0000000000b2");
     private static final String WORLD_NAME = "world";
 
     private enum Removal {
 
-        BLOCK_BREAK(FastLeafDecayConfig.DEFAULT_BREAK_DELAY) {
+        BLOCK_BREAK {
             @Override
             void dispatch(LeafDecayHandler handler, Block block) {
                 handler.onBlockBreak(new BlockBreakEvent(block, mock(Player.class)));
             }
+
+            @Override
+            long delayOf(FastLeafDecayConfig config) {
+                return config.breakDelay();
+            }
         },
-        LEAVES_DECAY(FastLeafDecayConfig.DEFAULT_DECAY_DELAY) {
+        LEAVES_DECAY {
             @Override
             void dispatch(LeafDecayHandler handler, Block block) {
                 handler.onLeavesDecay(new LeavesDecayEvent(block));
             }
+
+            @Override
+            long delayOf(FastLeafDecayConfig config) {
+                return config.decayDelay();
+            }
         };
 
-        private final long expectedDelay;
-
-        Removal(long expectedDelay) {
-            this.expectedDelay = expectedDelay;
-        }
-
         abstract void dispatch(LeafDecayHandler handler, Block block);
+
+        abstract long delayOf(FastLeafDecayConfig config);
     }
 
     private enum Neighbor {
@@ -99,6 +108,9 @@ class LeafDecayHandlerTest {
 
     @Mock
     private World world;
+
+    @Mock
+    private World otherWorld;
 
     @Mock
     private LeafDecayExecutor executor;
@@ -128,6 +140,12 @@ class LeafDecayHandlerTest {
         when(this.server.getRegionScheduler()).thenReturn(this.scheduler);
     }
 
+    private FastLeafDecayConfig setDelays(long breakDelay, long decayDelay) {
+        var config = new FastLeafDecayConfig(WorldFilter.empty(), WorldFilter.empty(), breakDelay, decayDelay, true, true);
+        this.configHolder.set(config);
+        return config;
+    }
+
     private void excludeTheWorld() {
         when(this.world.getName()).thenReturn(WORLD_NAME);
         this.configHolder.set(new FastLeafDecayConfig(WorldFilter.empty(), WorldFilter.parse(List.of(WORLD_NAME)).filter(),
@@ -144,24 +162,24 @@ class LeafDecayHandlerTest {
      * Creates the removed block and the six blocks around it. The neighbor of the
      * first face is described by {@code first}, the remaining ones by {@code rest}.
      */
-    private Block removedBlockSurroundedBy(Material type, Neighbor first, Neighbor rest) {
+    private Block removedBlockSurroundedBy(World world, Material type, Neighbor first, Neighbor rest) {
         var block = removedBlock(type);
-        when(block.getWorld()).thenReturn(this.world);
-        when(this.world.getUID()).thenReturn(WORLD_UID);
+        when(block.getWorld()).thenReturn(world);
+        when(world.getUID()).thenReturn(world == this.otherWorld ? OTHER_WORLD_UID : WORLD_UID);
 
         for (int i = 0; i < NEIGHBOR_FACES.length; i++) {
-            var neighbor = neighborBlock(i == 0 ? first : rest, i);
+            var neighbor = neighborBlock(world, i == 0 ? first : rest, i);
             when(block.getRelative(NEIGHBOR_FACES[i])).thenReturn(neighbor);
         }
 
         return block;
     }
 
-    private Block removedBlockSurroundedByLeaves(Material type) {
-        return removedBlockSurroundedBy(type, Neighbor.DECAYABLE_LEAVES, Neighbor.DECAYABLE_LEAVES);
+    private Block removedBlockSurroundedByLeaves(World world, Material type) {
+        return removedBlockSurroundedBy(world, type, Neighbor.DECAYABLE_LEAVES, Neighbor.DECAYABLE_LEAVES);
     }
 
-    private Block neighborBlock(Neighbor neighbor, int index) {
+    private Block neighborBlock(World world, Neighbor neighbor, int index) {
         var block = mock(Block.class);
         when(block.getType()).thenReturn(neighbor == Neighbor.NOT_LEAVES ? OTHER : LEAVES);
 
@@ -171,15 +189,19 @@ class LeafDecayHandlerTest {
             when(block.getBlockData()).thenReturn(blockData);
 
             if (neighbor == Neighbor.DECAYABLE_LEAVES) {
-                when(block.getLocation()).thenReturn(neighborLocation(index));
+                when(block.getLocation()).thenReturn(neighborLocation(world, index));
             }
         }
 
         return block;
     }
 
-    private Location neighborLocation(int index) {
-        return new Location(this.world, index, 64, 0);
+    /**
+     * The neighbors of the removed block only differ in their x coordinate, so the
+     * same index describes the same position in every world.
+     */
+    private Location neighborLocation(World world, int index) {
+        return new Location(world, index, 64, 0);
     }
 
     private List<Location> scheduledLocations(long expectedDelay, int expectedCount) {
@@ -188,13 +210,22 @@ class LeafDecayHandlerTest {
         return this.locationCaptor.getAllValues();
     }
 
+    private List<Location> allScheduledLocations() {
+        verify(this.scheduler, atLeastOnce()).runDelayed(eq(this.plugin), this.locationCaptor.capture(), any(), anyLong());
+        return this.locationCaptor.getAllValues();
+    }
+
     /**
-     * Returns the task that was scheduled for the neighbor of the given index, which
-     * is the neighbor at {@link #neighborLocation(int)}.
+     * Returns the tasks in the order in which they were scheduled, so the task of the
+     * neighbor with the index {@code i} of the first dispatched event is at {@code i}.
      */
-    private Consumer<ScheduledTask> scheduledTaskOf(int neighborIndex) {
+    private List<Consumer<ScheduledTask>> scheduledTasks() {
         verify(this.scheduler, atLeastOnce()).runDelayed(eq(this.plugin), any(Location.class), this.taskCaptor.capture(), anyLong());
-        return this.taskCaptor.getAllValues().get(neighborIndex);
+        return this.taskCaptor.getAllValues();
+    }
+
+    private Consumer<ScheduledTask> scheduledTaskOf(int index) {
+        return scheduledTasks().get(index);
     }
 
     @Nested
@@ -205,13 +236,14 @@ class LeafDecayHandlerTest {
         @EnumSource(Removal.class)
         void schedulesEveryNeighborWithTheConfiguredDelay(Removal removal) {
             givenRegionScheduler();
-            var block = removedBlockSurroundedByLeaves(LOG);
+            var config = setDelays(17, 23);
+            var block = removedBlockSurroundedByLeaves(world, LOG);
 
             removal.dispatch(handler, block);
 
-            assertEquals(List.of(neighborLocation(0), neighborLocation(1), neighborLocation(2),
-                    neighborLocation(3), neighborLocation(4), neighborLocation(5)),
-                scheduledLocations(removal.expectedDelay, NEIGHBOR_FACES.length));
+            assertEquals(List.of(neighborLocation(world, 0), neighborLocation(world, 1), neighborLocation(world, 2),
+                    neighborLocation(world, 3), neighborLocation(world, 4), neighborLocation(world, 5)),
+                scheduledLocations(removal.delayOf(config), NEIGHBOR_FACES.length));
         }
 
         @ParameterizedTest(name = "{0}")
@@ -239,7 +271,7 @@ class LeafDecayHandlerTest {
         void isAcceptedWhenItIsALogOrLeaves(Material type) {
             givenRegionScheduler();
 
-            Removal.BLOCK_BREAK.dispatch(handler, removedBlockSurroundedByLeaves(type));
+            Removal.BLOCK_BREAK.dispatch(handler, removedBlockSurroundedByLeaves(world, type));
 
             verify(scheduler, times(NEIGHBOR_FACES.length))
                 .runDelayed(eq(plugin), any(Location.class), any(), anyLong());
@@ -254,24 +286,38 @@ class LeafDecayHandlerTest {
         @EnumSource(value = Neighbor.class, names = {"PERSISTENT_LEAVES", "NOT_LEAVES"})
         void isSkippedWhenItCannotDecay(Neighbor skipped) {
             givenRegionScheduler();
-            var block = removedBlockSurroundedBy(LOG, Neighbor.DECAYABLE_LEAVES, skipped);
+            var block = removedBlockSurroundedBy(world, LOG, Neighbor.DECAYABLE_LEAVES, skipped);
 
             Removal.BLOCK_BREAK.dispatch(handler, block);
 
-            assertEquals(List.of(neighborLocation(0)),
+            assertEquals(List.of(neighborLocation(world, 0)),
                 scheduledLocations(FastLeafDecayConfig.DEFAULT_BREAK_DELAY, 1));
         }
 
         @Test
         void isScheduledOnlyOnceWhileItIsPending() {
             givenRegionScheduler();
-            var block = removedBlockSurroundedByLeaves(LOG);
+            var block = removedBlockSurroundedByLeaves(world, LOG);
 
             Removal.BLOCK_BREAK.dispatch(handler, block);
             Removal.BLOCK_BREAK.dispatch(handler, block);
 
             verify(scheduler, times(NEIGHBOR_FACES.length))
                 .runDelayed(eq(plugin), any(Location.class), any(), anyLong());
+        }
+
+        @Test
+        void isScheduledAgainAfterItsPendingTaskRan() {
+            givenRegionScheduler();
+            var block = removedBlockSurroundedByLeaves(world, LOG);
+
+            Removal.BLOCK_BREAK.dispatch(handler, block);
+            scheduledTaskOf(0).accept(null);
+            Removal.BLOCK_BREAK.dispatch(handler, block);
+
+            var locations = allScheduledLocations();
+            assertEquals(NEIGHBOR_FACES.length + 1, locations.size());
+            assertEquals(2, locations.stream().filter(neighborLocation(world, 0)::equals).count());
         }
     }
 
@@ -283,17 +329,17 @@ class LeafDecayHandlerTest {
         void decaysTheLeaves() {
             givenRegionScheduler();
 
-            Removal.BLOCK_BREAK.dispatch(handler, removedBlockSurroundedByLeaves(LOG));
+            Removal.BLOCK_BREAK.dispatch(handler, removedBlockSurroundedByLeaves(world, LOG));
             scheduledTaskOf(0).accept(null);
 
-            verify(executor).decay(neighborLocation(0));
+            verify(executor).decay(neighborLocation(world, 0));
         }
 
         @Test
         void decaysTheLeavesOnlyOnce() {
             givenRegionScheduler();
 
-            Removal.BLOCK_BREAK.dispatch(handler, removedBlockSurroundedByLeaves(LOG));
+            Removal.BLOCK_BREAK.dispatch(handler, removedBlockSurroundedByLeaves(world, LOG));
             var task = scheduledTaskOf(0);
             task.accept(null);
             task.accept(null);
@@ -305,7 +351,7 @@ class LeafDecayHandlerTest {
         void doesNothingWhenTheWorldWasDisabledInTheMeantime() {
             givenRegionScheduler();
 
-            Removal.BLOCK_BREAK.dispatch(handler, removedBlockSurroundedByLeaves(LOG));
+            Removal.BLOCK_BREAK.dispatch(handler, removedBlockSurroundedByLeaves(world, LOG));
             var task = scheduledTaskOf(0);
             excludeTheWorld();
             task.accept(null);
@@ -317,7 +363,7 @@ class LeafDecayHandlerTest {
         void doesNothingAfterTheWorldWasUnloaded() {
             givenRegionScheduler();
 
-            Removal.BLOCK_BREAK.dispatch(handler, removedBlockSurroundedByLeaves(LOG));
+            Removal.BLOCK_BREAK.dispatch(handler, removedBlockSurroundedByLeaves(world, LOG));
             var task = scheduledTaskOf(0);
             handler.onWorldUnload(new WorldUnloadEvent(world));
             task.accept(null);
@@ -329,10 +375,56 @@ class LeafDecayHandlerTest {
         void doesNothingAfterTheHandlerWasCleared() {
             givenRegionScheduler();
 
-            Removal.BLOCK_BREAK.dispatch(handler, removedBlockSurroundedByLeaves(LOG));
+            Removal.BLOCK_BREAK.dispatch(handler, removedBlockSurroundedByLeaves(world, LOG));
             var task = scheduledTaskOf(0);
             handler.clear();
             task.accept(null);
+
+            verifyNoInteractions(executor);
+        }
+    }
+
+    /**
+     * The pending positions are held per world while {@code LeavesSet} stores a
+     * position without its world, so the worlds must not share their pending state.
+     */
+    @Nested
+    @DisplayName("another world")
+    class MultipleWorlds {
+
+        @BeforeEach
+        void dispatchInBothWorlds() {
+            givenRegionScheduler();
+
+            Removal.BLOCK_BREAK.dispatch(handler, removedBlockSurroundedByLeaves(world, LOG));
+            Removal.BLOCK_BREAK.dispatch(handler, removedBlockSurroundedByLeaves(otherWorld, LOG));
+        }
+
+        @Test
+        void holdsTheSamePositionIndependently() {
+            var locations = scheduledLocations(FastLeafDecayConfig.DEFAULT_BREAK_DELAY, 2 * NEIGHBOR_FACES.length);
+
+            assertTrue(locations.contains(neighborLocation(world, 0)));
+            assertTrue(locations.contains(neighborLocation(otherWorld, 0)));
+        }
+
+        @Test
+        void keepsItsPendingPositionsWhenAnotherWorldIsUnloaded() {
+            handler.onWorldUnload(new WorldUnloadEvent(world));
+
+            scheduledTaskOf(0).accept(null);
+            scheduledTaskOf(NEIGHBOR_FACES.length).accept(null);
+
+            verify(executor, never()).decay(neighborLocation(world, 0));
+            verify(executor).decay(neighborLocation(otherWorld, 0));
+        }
+
+        @Test
+        void losesItsPendingPositionsWhenTheHandlerIsCleared() {
+            handler.clear();
+
+            scheduledTaskOf(0).accept(null);
+            scheduledTaskOf(NEIGHBOR_FACES.length).accept(null);
 
             verifyNoInteractions(executor);
         }

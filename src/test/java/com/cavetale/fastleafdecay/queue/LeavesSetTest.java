@@ -13,11 +13,9 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.IntPredicate;
 import java.util.stream.IntStream;
@@ -177,26 +175,30 @@ class LeavesSetTest {
 
         private long countTrue(IntPredicate operation) throws Exception {
             var barrier = new CyclicBarrier(WORKERS);
-            List<Future<Boolean>> results;
 
             try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
-                results = IntStream.range(0, WORKERS)
+                var results = IntStream.range(0, WORKERS)
                     .mapToObj(worker -> executor.<Boolean>submit(() -> {
                         barrier.await(TIMEOUT_SECONDS, TimeUnit.SECONDS);
                         return operation.test(worker);
                     }))
                     .toList();
-            }
 
-            long trueResults = 0;
+                try {
+                    long trueResults = 0;
 
-            for (var result : results) {
-                if (result.get(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                    trueResults++;
+                    for (var result : results) {
+                        if (result.get(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                            trueResults++;
+                        }
+                    }
+
+                    return trueResults;
+                } finally {
+                    // a worker that did not finish in time must not make close() wait for it
+                    results.forEach(result -> result.cancel(true));
                 }
             }
-
-            return trueResults;
         }
     }
 }

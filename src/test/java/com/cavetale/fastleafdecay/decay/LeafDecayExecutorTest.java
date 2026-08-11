@@ -205,8 +205,8 @@ class LeafDecayExecutorTest {
             assertTrue(executor.decay(location));
 
             var particleLocation = ArgumentCaptor.forClass(Location.class);
-            verify(world).spawnParticle(eq(Particle.BLOCK), particleLocation.capture(), anyInt(),
-                anyDouble(), anyDouble(), anyDouble(), anyDouble(), eq(blockData));
+            verify(world).spawnParticle(eq(Particle.BLOCK), particleLocation.capture(), eq(8),
+                eq(0.2), eq(0.2), eq(0.2), eq(0.0), eq(blockData));
 
             assertEquals(new Location(world, 1.5, 2.5, 3.5), particleLocation.getValue());
             assertEquals(new Location(world, 1, 2, 3), location);
@@ -223,6 +223,8 @@ class LeafDecayExecutorTest {
 
             assertEquals(Key.key("block.grass.break"), sound.getValue().name());
             assertEquals(Sound.Source.BLOCK, sound.getValue().source());
+            assertEquals(0.05f, sound.getValue().volume());
+            assertEquals(1.2f, sound.getValue().pitch());
         }
     }
 }
