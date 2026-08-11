@@ -17,6 +17,7 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.IntPredicate;
 import java.util.stream.IntStream;
 
@@ -107,6 +108,106 @@ class LeavesSetTest {
             assertFalse(leavesSet.isEmpty());
             assertTrue(leavesSet.remove(location(x2, y2, z2)));
             assertTrue(leavesSet.isEmpty());
+        }
+    }
+
+    /**
+     * A position is packed into a single long, which gives x and z 27 bits each and
+     * leaves 10 bits for y. Positions that are further apart than the range such a
+     * field can represent share their key, so every case below stays inside one
+     * range: |x|, |z| below 2^26 and |y| below 512, which covers the whole world.
+     */
+    @Nested
+    @DisplayName("the packed position")
+    class PackedPosition {
+
+        private static final int[] OFFSETS = {-1, 0, 1};
+
+        @ParameterizedTest(name = "({0}, {1}, {2}) and ({3}, {4}, {5})")
+        @CsvSource({
+            // a negative coordinate is not stored as its positive counterpart
+            "       -1,   64,         0,          1,   64,         0",
+            "        0,   64,        -1,          0,   64,         1",
+            "        0,   -1,         0,          0,    1,         0",
+            // the position next to the origin of an axis
+            "       -1,   64,         0,          0,   64,         0",
+            "        0,   64,        -1,          0,   64,         0",
+            "        0,   -1,         0,          0,    0,         0",
+            // the neighbors of the highest and the lowest x that the field represents
+            " 67108862,   64,         0,   67108863,   64,         0",
+            " 67108863,   64,         0,   67108864,   64,         0",
+            "-67108864,   64,         0,  -67108863,   64,         0",
+            // the same for z
+            "        0,   64,  67108862,          0,   64,  67108863",
+            "        0,   64,  67108863,          0,   64,  67108864",
+            "        0,   64, -67108864,          0,   64, -67108863",
+            // and for y
+            "        0,  510,         0,          0,  511,         0",
+            "        0,  511,         0,          0,  512,         0",
+            "        0, -512,         0,          0, -511,         0",
+            "        0, -512,         0,          0,  511,         0",
+            // a field is wide enough to keep the ends of its range apart
+            "        0,   64,         0,   67108864,   64,         0",
+            "        0,   64,         0,          0,   64,  67108864",
+            "        0,    0,         0,          0,  512,         0",
+            // an extreme value of one axis does not reach into the field of another one
+            " 67108863,   64,         0,          0,   64,  67108863",
+            "       -1,   64,         0,          0,   64,        -1",
+            "        0,   64,        -1,          0,   -1,         0",
+            // the corners of the world border and the height limits
+            " 30000000,   64,         0,   29999999,   64,         0",
+            "-30000000,   64,         0,  -29999999,   64,         0",
+            "        0,  319,         0,          0,  -64,         0",
+        })
+        void isDistinctFromTheOtherPositionsAtTheBoundaries(int x1, int y1, int z1, int x2, int y2, int z2) {
+            assertTrue(leavesSet.add(location(x1, y1, z1)));
+            assertTrue(leavesSet.add(location(x2, y2, z2)));
+
+            assertTrue(leavesSet.remove(location(x1, y1, z1)));
+            assertFalse(leavesSet.isEmpty());
+            assertTrue(leavesSet.remove(location(x2, y2, z2)));
+            assertTrue(leavesSet.isEmpty());
+        }
+
+        @ParameterizedTest(name = "around ({0}, {1}, {2})")
+        @CsvSource({
+            "        0,    0,         0",
+            "       -1,   -1,        -1",
+            " 67108863,  511,  67108863",
+            "-67108864, -512, -67108864",
+            " 30000000,  319, -30000000",
+            "-30000000,  -64,  30000000",
+        })
+        void isDistinctFromEveryAdjacentPosition(int x, int y, int z) {
+            forEachAdjacentPosition(x, y, z, position ->
+                assertTrue(leavesSet.add(position), () -> position + " was already stored"));
+
+            forEachAdjacentPosition(x, y, z, position ->
+                assertTrue(leavesSet.remove(position), () -> position + " was not stored"));
+
+            assertTrue(leavesSet.isEmpty());
+        }
+
+        @ParameterizedTest(name = "({0}, {1}, {2})")
+        @CsvSource({
+            " 67108863,  511,  67108863",
+            "-67108864, -512, -67108864",
+            " 30000000,  319, -30000000",
+        })
+        void isTheSameKeyEveryTimeItIsPacked(int x, int y, int z) {
+            assertTrue(leavesSet.add(location(x, y, z)));
+            assertFalse(leavesSet.add(location(x, y, z)));
+            assertTrue(leavesSet.remove(location(x, y, z)));
+        }
+
+        private void forEachAdjacentPosition(int x, int y, int z, Consumer<Location> action) {
+            for (var offsetX : OFFSETS) {
+                for (var offsetY : OFFSETS) {
+                    for (var offsetZ : OFFSETS) {
+                        action.accept(location(x + offsetX, y + offsetY, z + offsetZ));
+                    }
+                }
+            }
         }
     }
 
