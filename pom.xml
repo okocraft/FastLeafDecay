@@ -18,7 +18,7 @@
         <project.reporting.outputEncoding>${project.charset}</project.reporting.outputEncoding>
         <configurate.version>4.2.0</configurate.version>
         <junit.version>6.1.3</junit.version>
-        <mockito.version>5.23.0</mockito.version>
+        <mockito.version>5.24.0</mockito.version>
     </properties>
 
     <repositories>
@@ -44,7 +44,7 @@
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
-            <version>26.2.build.129-stable</version>
+            <version>26.3.build.140-beta</version>
             <scope>provided</scope>
         </dependency>
 
