@@ -44,10 +44,10 @@ class FastLeafDecayConfigTest {
 
         @ParameterizedTest(name = "{0}/{1} -> {2}/{3}")
         @CsvSource({
-            "0, 0, 5, 1",
-            "-10, -10, 5, 1",
-            "4, 1, 5, 1",
-            "5, 2, 5, 2",
+            "0, 0, 8, 1",
+            "-10, -10, 8, 1",
+            "7, 1, 8, 1",
+            "8, 2, 8, 2",
             "20, 10, 20, 10",
         })
         void areClampedToTheirMinimum(long breakDelay, long decayDelay, long expectedBreakDelay, long expectedDecayDelay) {
