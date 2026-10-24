@@ -19,14 +19,14 @@ public record FastLeafDecayConfig(@NotNull WorldFilter onlyInWorlds, @NotNull Wo
     /**
      * The minimum {@code BreakDelay} that guarantees proper function.
      */
-    public static final long MIN_BREAK_DELAY = 5;
+    public static final long MIN_BREAK_DELAY = 8;
 
     /**
      * The minimum {@code DecayDelay} that guarantees proper function.
      */
     public static final long MIN_DECAY_DELAY = 1;
 
-    public static final long DEFAULT_BREAK_DELAY = 5;
+    public static final long DEFAULT_BREAK_DELAY = 8;
     public static final long DEFAULT_DECAY_DELAY = 2;
     public static final boolean DEFAULT_SPAWN_PARTICLES = true;
     public static final boolean DEFAULT_PLAY_SOUND = true;

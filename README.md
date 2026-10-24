@@ -32,8 +32,8 @@ OnlyInWorlds: []
 # List worlds you wish to exclude from sped up leaves decay.
 ExcludeWorlds: []
 # Delay in ticks to check around a broken block.
-# Must be at least 5 to guarantee proper function.
-BreakDelay: 5
+# Must be at least 8 to guarantee proper function (leaf distances need about 7 ticks to settle).
+BreakDelay: 8
 # Delay in ticks to check around decaying leaves.
 DecayDelay: 2
 # Play additional effects

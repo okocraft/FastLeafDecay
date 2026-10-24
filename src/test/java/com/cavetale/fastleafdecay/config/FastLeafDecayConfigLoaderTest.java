@@ -82,7 +82,7 @@ class FastLeafDecayConfigLoaderTest {
                     new FastLeafDecayConfig(filter("minecraft:overworld", "custom:resource_world"), WorldFilter.empty(),
                         FastLeafDecayConfig.DEFAULT_BREAK_DELAY, FastLeafDecayConfig.DEFAULT_DECAY_DELAY, true, true)),
                 Arguments.of("delays at their minimum", """
-                        BreakDelay: 5
+                        BreakDelay: 8
                         DecayDelay: 1
                         """,
                     new FastLeafDecayConfig(WorldFilter.empty(), WorldFilter.empty(),
